@@ -1,0 +1,29 @@
+{
+    "sites": [
+        {
+            "siteName": "Google",
+            "steps": [
+                {
+                    "action": "go",
+                    "value": "https://google.com"
+                }, 
+                {
+                    "action": "title"
+                }
+            ]
+        },
+        {
+            "siteName": "Twitter",
+            "steps": [
+                {
+                    "action": "go",
+                    "value": "https://twitter.com/elonmusk"
+                },
+                 
+                {
+                    "action": "title"
+                }
+            ]
+        }
+    ]
+}
