@@ -1,0 +1,104 @@
+# The Module Name is used as prefix for all contained resources.
+Module: SharpPuppets.Module
+
+Using:
+
+  - Module: LambdaSharp.S3.IO@lambdasharp
+
+# The Module Version is shown in the CloudFormation stack and Lambda function descriptions.
+Version: 1.0-DEV
+
+# The Module Description is shown in the AWS CloudFormation console with the version number.
+Description: Deploy Chrome headless with the chrome-aws-lambda NPM package and control it with Puppeteer Sharp
+
+# The Items section defines values and resources for the module.
+Items:
+
+  - Variable: ChromeZipS3Key
+    Description: Name for Chrome layer folder
+    Value: chromeLayer.zip
+  
+  - Variable: NodeZipS3Key
+    Description: Name for Node layer folder
+    Value: node-v10.17.0-linux-x64.zip
+
+  - Resource: LayerBucket
+    Description: Bucket to hold Layer Files
+    Type: AWS::S3::Bucket
+    Allow: ReadWrite
+
+  - Resource: ScrapeBucket
+    Description: Bucket to hold scrape assets
+    Type: AWS::S3::Bucket
+    Scope: GoogleFunction, TwitterFunction # Add any new lambda function scrapers here
+    Allow: ReadWrite
+
+  - Package: Assets
+    Description: Asset files to deploy
+    Files: assets/
+
+  - Resource: DeployAssets
+    DependsOn: 
+      - LayerBucket
+    Type: LambdaSharp::S3::Unzip
+    Properties:
+      SourceBucket: !Ref DeploymentBucketName
+      SourceKey: !Ref Assets
+      DestinationBucket: !Ref LayerBucket
+      DestinationKey: ""
+
+  - Resource: InvokeLambdasPermission
+    Allow: lambda:InvokeFunction
+    Value: "*"
+
+  - Function: TwitterFunction
+    Description: Use Puppeteer to control Twitter
+    Memory: 1600
+    Timeout: 30
+    Scope: Master
+    Properties:
+      Layers:
+        - !Ref ChromeLayer
+        - !Ref NodeLayer
+
+  - Function: GoogleFunction
+    Description: Use Puppeteer to control Google
+    Memory: 1600
+    Timeout: 30
+    Scope: Master
+    Properties:
+      Layers:
+        - !Ref ChromeLayer
+        - !Ref NodeLayer
+
+  - Function: Master
+    Description: Orchestrator function to control other lambda functions
+    Sources: 
+      - S3: ScrapeBucket
+        Suffix: .json
+    Memory: 256
+    Timeout: 30
+
+  - Resource: ChromeLayer
+    DependsOn: 
+      - DeployAssets
+    Type: AWS::Lambda::LayerVersion
+    Properties: 
+      CompatibleRuntimes: 
+        - dotnetcore2.1
+      Content: 
+        { S3Bucket: !Ref LayerBucket, S3Key: !Ref ChromeZipS3Key }
+      Description: Chrome Executable
+      LayerName: ChromeLayer
+
+  - Resource: NodeLayer
+    DependsOn: 
+      - DeployAssets
+    Type: AWS::Lambda::LayerVersion
+    Properties: 
+      CompatibleRuntimes: 
+        - dotnetcore2.1
+      Content: 
+        { S3Bucket: !Ref LayerBucket, S3Key: !Ref NodeZipS3Key }
+      Description: Node.js
+      LayerName: NodeLayer

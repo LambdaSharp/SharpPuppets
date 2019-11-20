@@ -18,7 +18,7 @@ The **Chrome browser** is created by the chrome-aws-lambda package when the [C# 
 
 > Lambda Layers can be thought of as [file folders that are available to your lambda function at runtime](./reference/images/LambdaLayer.png). In this challenge, we use two Lambda Layers. The first layer is a javascript file that calls the chrome-aws-lambda NPM package. The second layer is a linux executable of Node (C# lambda function does not have Node natively available). These Layers are compressed and uploaded to AWS. The compressed versions that get uploaded can be found in [assets](./assets). The [uncompressed versions of these folders](./reference) were added for reference and should not be altered for the purposes of this challenge. 
 
-A [**Master Lambda Function**](./Master/Function.cs) exists to process the [initial input file](./assets/steps.json) that contains directions of which sites to scrape, and how to scrape them. The Master Lambda will interpret the JSON file, and [invoke the appropriate Lambda function](./Master/Function.cs#L49).
+A [**Master Lambda Function**](./Master/Function.cs) exists to process the [initial input file](./steps.json) that contains directions of which sites to scrape, and how to scrape them. The Master Lambda will interpret the JSON file, and [invoke the appropriate Lambda function](./Master/Function.cs#L49).
 
 
 # Level 1: Setup
@@ -46,7 +46,7 @@ lash deploy --tier puppet
 > Note: You can run `export LAMBDASHARP_TIER='puppet'` in your terminal or add it to your [bash profile](http://howtolamp.com/articles/bash-startup-scripts/) in order to skip adding `--tier puppet` to every `lash` command. 
 
 ## Validation (Level 1: Setup)
-Upload [steps.json](./assets/steps.json) into the Scrape Bucket. The Master Lambda function is [configured to be triggered](./Module.yml#L80) anytime a json file is uploaded into the bucket. The Master Lambda function will then [trigger the appropriate Scraper Lambda function](./Master/Function.cs#L56). Check the [CloudWatch logs](./reference/images/cloudwatchlogs.png) for each respective lambda function to validate they were called appropriately. Any console messages (LogInfo) will appear in CloudWatch. 
+Upload [steps.json](./steps.json) into the Scrape Bucket. The Master Lambda function is [configured to be triggered](./Module.yml#L80) anytime a json file is uploaded into the bucket. The Master Lambda function will then [trigger the appropriate Scraper Lambda function](./Master/Function.cs#L56). Check the [CloudWatch logs](./reference/images/cloudwatchlogs.png) for each respective lambda function to validate they were called appropriately. Any console messages (LogInfo) will appear in CloudWatch. 
 
 
 # Level 2: Screenshot
@@ -76,7 +76,7 @@ Lambda allows you to kickoff 1000 of itself.. so why not? We will create a new l
 
 ## How it works
 * (optional) Add another lambda function to scrape a new site. 
-* (optional) Expand on your (steps.json)[./assets/steps.json].
+* (optional) Expand on your (steps.json)[./steps.json].
 * Scrape something meaningful, such as images, songs, tweets, etc.
 
 ## Validation (Boss: Scrape the Internet)
