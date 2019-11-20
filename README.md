@@ -59,7 +59,7 @@ Developing in the cloud, using headless chrome sucks.. to ease the pain, let's i
   * [PutObjectAsync example](https://github.com/LambdaSharp/TimeStone/blob/master/Gateway/Function.cs#L157)
 
 ## Validation (Level 2: Screenshot)
-Run your Lambda function using any test event. Check S3 bucket for a screenshot of the page you navigated to.
+Trigger your lambda function. Check Scrape S3 bucket for a screenshot of the page you navigated to.
 
 # Level 3: Scrape
 Puppeteer provides some basic actions, such as filling in an input field or clicking on a button. Conduct some actions on the site of your choosing!
