@@ -1,14 +1,23 @@
 {
     "sites": [
         {
-            "siteName": "Google",
+            "siteName": "Wikipedia",
             "steps": [
                 {
                     "action": "go",
-                    "value": "https://google.com"
-                }, 
+                    "value": "https://www.wikipedia.org/"
+                },
                 {
-                    "action": "title"
+                    "action": "fill",
+                    "value": "mindtouch",
+                    "selector": "#searchInput"
+                },
+                {
+                    "action": "click",
+                    "selector": "button.pure-button-primary-progressive"
+                },
+                {
+                    "action": "screenshot"
                 }
             ]
         },
@@ -19,9 +28,9 @@
                     "action": "go",
                     "value": "https://twitter.com/elonmusk"
                 },
-                 
+
                 {
-                    "action": "title"
+                    "action": "screenshot"
                 }
             ]
         }

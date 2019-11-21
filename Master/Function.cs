@@ -1,9 +1,30 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2019 LambdaSharp
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 using System;
 using System.IO;
 using System.Threading.Tasks;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
 using Amazon.Lambda.Core;
 using LambdaSharp;
 using Amazon.Lambda;
@@ -20,80 +41,45 @@ using Sharp;
 namespace My.SharpPuppets.Master {
 
     public class Function : ALambdaFunction<S3Event, string> {
-         //--- Fields ---
-        private string _googleArn;
-        private string _twitterArn;
+
+        //--- Fields ---
+        private string _chromeFunctionArn;
         private IAmazonLambda _lambdaClient;
         private IAmazonS3 _s3Client;
 
         //--- Methods ---
         public override async Task InitializeAsync(LambdaConfig config) {
-
-            _googleArn = System.Environment.GetEnvironmentVariable("STR_GOOGLEFUNCTION");
-            _twitterArn = System.Environment.GetEnvironmentVariable("STR_TWITTERFUNCTION");
+            _chromeFunctionArn = config.ReadText("ChromeFunction");
             _lambdaClient = new AmazonLambdaClient();
             _s3Client = new AmazonS3Client();
         }
 
-        public override async Task<string> ProcessMessageAsync(S3Event s3Event)
-        {
-            var record = s3Event.Records.FirstOrDefault();
-            var sourceBucket = record.S3.Bucket.Name;
-            var sourceKey = record.S3.Object.Key;
-
-            var scrapeListString = await GetDataFromS3(sourceBucket, sourceKey);
-            var scrapeList = JsonConvert.DeserializeObject<Models.Payload>(scrapeListString);
-
-            var tasks = new List<Task>();
-
-            foreach(var site in scrapeList.Sites) {
-                switch (site.SiteName)
-                {
-                    case "Google":
-                        tasks.Add(InvokeLambda(_googleArn, site));
-                        break;
-                    case "Twitter":
-                        tasks.Add(InvokeLambda(_twitterArn, site));
-                        break;
-                    default:
-                        break;
+        public override async Task<string> ProcessMessageAsync(S3Event s3Event) {
+            foreach(var record in s3Event.Records) {
+                var scrapeListString = await GetDataFromS3(record.S3.Bucket.Name, record.S3.Object.Key);
+                var scrapeList = JsonConvert.DeserializeObject<Models.Payload>(scrapeListString);
+                foreach(var site in scrapeList.Sites) {
+                    AddPendingTask(_lambdaClient.InvokeAsync(new InvokeRequest {
+                        FunctionName = _chromeFunctionArn,
+                        InvocationType = "Event",
+                        Payload = JsonConvert.SerializeObject(site)
+                    }));
                 }
             }
-
-            await Task.WhenAll(tasks);
-
             return "Success";
         }
 
-        public async Task InvokeLambda(string lambdaArn, Models.Site site) {
-            var invokeRequest = new InvokeRequest {
-                FunctionName = lambdaArn,
-                InvocationType = "Event",
-                Payload = JsonConvert.SerializeObject(site)
-            };
-
-            await _lambdaClient.InvokeAsync(invokeRequest);
-        }
-        
         public async Task<string> GetDataFromS3(string bucket, string key) {
-            try
-            {
-                var request = new GetObjectRequest {
+            try {
+                using(var response = await _s3Client.GetObjectAsync(new GetObjectRequest {
                     BucketName = bucket,
                     Key = key
-                };
-                using (GetObjectResponse response = await _s3Client.GetObjectAsync(request))
-                using (Stream responseStream = response.ResponseStream) 
-                using (StreamReader reader = new StreamReader(responseStream))
-                {
-                    return reader.ReadToEnd();
+                }))
+                using(var reader = new StreamReader(response.ResponseStream)) {
+                    return await reader.ReadToEndAsync();
                 }
-            }
-            catch(Exception e)
-            {
-                Console.WriteLine($"Error getting object from bucket {bucket}. Make sure it exists and your bucket is in the same region as this function.");
-                Console.WriteLine(e.Message);
-                Console.WriteLine(e.StackTrace);
+            } catch(Exception e) {
+                LogError(e, $"Error getting object from bucket {bucket}. Make sure it exists and your bucket is in the same region as this function.");
                 throw;
             }
         }
